@@ -1,53 +1,50 @@
+use std::collections::VecDeque;
 use std::sync::{Arc, Condvar, Mutex};
 use std::thread;
 use std::time::Duration;
 
-fn producer(vec1: Vec<i32>, vec2: Vec<i32>, sync: Arc<(Mutex<Option<i32>>, Mutex<bool>, Condvar)>) {
+fn producer(vec1: Vec<i32>, vec2: Vec<i32>, sync: Arc<(Mutex<VecDeque<i32>>, Condvar)>) {
     if vec1.len() != vec2.len() {
         return;
     }
 
     for i in 0..vec1.len() {
-        let (last_val_mutex, _, cond_var) = &*sync;
-        let mut last_val_guard = last_val_mutex.lock().unwrap();
+        let (queue_mutex, cond_var) = &*sync;
+        let mut queue_guard = queue_mutex.lock().unwrap();
 
         println!("Prod {}", i);
 
-        *last_val_guard = Some(vec1[i] * vec2[i]);
-        drop(last_val_guard);
+        queue_guard.push_back(vec1[i] * vec2[i]);
+        drop(queue_guard);
+
+        thread::sleep(Duration::from_secs(1));
 
         cond_var.notify_all();
-        thread::sleep(Duration::from_secs(1));
     }
-
-    let (_, finished_mutex, cond_var) = &*sync;
-    let mut finished_guard = finished_mutex.lock().unwrap();
-    *finished_guard = true;
-    cond_var.notify_all();
 }
 
-fn consumer(sync: Arc<(Mutex<Option<i32>>, Mutex<bool>, Condvar)>) {
-    let (last_val_mutex, finished_mutex, cond_var) = &*sync;
-    let mut last_val_guard = last_val_mutex.lock().unwrap();
+fn consumer(sync: Arc<(Mutex<VecDeque<i32>>, Condvar)>, n: i32) {
+    let (queue_mutex, cond_var) = &*sync;
+    let mut queue_guard = queue_mutex.lock().unwrap();
 
     println!("Entered consumer");
 
     let mut sum = 0;
+    let mut consumed = 0;
     loop {
-        last_val_guard = cond_var.wait(last_val_guard).unwrap();
+        queue_guard = cond_var.wait(queue_guard).unwrap();
 
-        if last_val_guard.is_some() {
-            sum += last_val_guard.unwrap();
-            *last_val_guard = None;
+        while !queue_guard.is_empty() {
+            sum += queue_guard.front().unwrap();
+            queue_guard.pop_front();
+            consumed += 1;
         }
 
-        println!("Cons {}", sum);
-
-        let finished_guard = finished_mutex.lock().unwrap();
-        if *finished_guard {
+        if consumed == n {
             break;
         }
-        drop(finished_guard);
+
+        println!("Cons {}: {}", consumed, sum);
     }
 
     println!("{}", sum);
@@ -57,12 +54,12 @@ fn main() {
     let vec1 = vec![3, 4, 7, 6, 8, 10];
     let vec2 = vec![6, 5, 2, 4, 10, 4];
     let sync = Arc::new(
-        (Mutex::new(None), Mutex::new(false), Condvar::new())
+        (Mutex::new(VecDeque::new()), Condvar::new())
     );
 
     let sync_clone = Arc::clone(&sync);
     let consumer = thread::spawn(move || {
-        consumer(sync_clone);
+        consumer(sync_clone, 6);
     });
 
     let producer = thread::spawn(move || {
