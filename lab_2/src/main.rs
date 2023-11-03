@@ -3,7 +3,7 @@ use std::sync::{Arc, Condvar, Mutex};
 use std::thread;
 use std::time::Duration;
 
-fn producer(vec1: Vec<i32>, vec2: Vec<i32>, sync: Arc<(Mutex<VecDeque<i32>>, Condvar)>) {
+fn producer(vec1: Vec<i32>, vec2: Vec<i32>, sync: Arc<(Mutex<VecDeque<Option<i32>>>, Condvar)>) {
     if vec1.len() != vec2.len() {
         return;
     }
@@ -14,16 +14,22 @@ fn producer(vec1: Vec<i32>, vec2: Vec<i32>, sync: Arc<(Mutex<VecDeque<i32>>, Con
 
         println!("Prod {}", i);
 
-        queue_guard.push_back(vec1[i] * vec2[i]);
+        queue_guard.push_back(Some(vec1[i] * vec2[i]));
         drop(queue_guard);
 
-        thread::sleep(Duration::from_secs(1));
-
         cond_var.notify_all();
+        thread::sleep(Duration::from_secs(1));
     }
+
+    let (queue_mutex, cond_var) = &*sync;
+    let mut queue_guard = queue_mutex.lock().unwrap();
+    queue_guard.push_back(None);
+
+    drop(queue_guard);
+    cond_var.notify_all();
 }
 
-fn consumer(sync: Arc<(Mutex<VecDeque<i32>>, Condvar)>, n: i32) {
+fn consumer(sync: Arc<(Mutex<VecDeque<Option<i32>>>, Condvar)>) {
     let (queue_mutex, cond_var) = &*sync;
     let mut queue_guard = queue_mutex.lock().unwrap();
 
@@ -34,13 +40,18 @@ fn consumer(sync: Arc<(Mutex<VecDeque<i32>>, Condvar)>, n: i32) {
     loop {
         queue_guard = cond_var.wait(queue_guard).unwrap();
 
+        let mut is_last = false;
         while !queue_guard.is_empty() {
-            sum += queue_guard.front().unwrap();
+            match queue_guard.front().unwrap() {
+                None => is_last = true,
+                Some(val) => sum += val
+            }
+
             queue_guard.pop_front();
             consumed += 1;
         }
 
-        if consumed == n {
+        if is_last {
             break;
         }
 
@@ -59,7 +70,7 @@ fn main() {
 
     let sync_clone = Arc::clone(&sync);
     let consumer = thread::spawn(move || {
-        consumer(sync_clone, 6);
+        consumer(sync_clone);
     });
 
     let producer = thread::spawn(move || {
