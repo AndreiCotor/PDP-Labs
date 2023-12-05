@@ -1,6 +1,7 @@
 use std::sync::atomic::{AtomicI32, Ordering};
 use std::sync::Arc;
 use std::thread;
+use std::time::Instant;
 use threadpool::ThreadPool;
 
 type Matrix<T> = Vec<Vec<T>>;
@@ -133,6 +134,8 @@ fn compute_classic_threads<F>(
         + Send
         + 'static,
 {
+    let now = Instant::now();
+
     let mut threads_vec = Vec::with_capacity(threads);
     let n = matrix1.len();
     let m = matrix2.get(0).unwrap().len();
@@ -154,7 +157,9 @@ fn compute_classic_threads<F>(
         thread.join().expect("Thread failed!");
     });
 
-    println!("{:?}", result);
+    //println!("{:?}", result);
+    let elapsed_time = now.elapsed();
+    println!("Running took {} ms.", elapsed_time.as_millis());
 }
 
 fn compute_thread_pool<F>(
@@ -168,12 +173,14 @@ fn compute_thread_pool<F>(
         + Send
         + 'static,
 {
+    let now = Instant::now();
+
     let n = matrix1.len();
     let m = matrix2.get(0).unwrap().len();
     let strategy_arc = Arc::new(strategy);
     let result = build_matrix(n, m);
 
-    let pool = ThreadPool::new(2);
+    let pool = ThreadPool::new(16);
 
     for thread in 0..threads {
         let matrix1_copy = Arc::clone(&matrix1);
@@ -187,14 +194,31 @@ fn compute_thread_pool<F>(
     }
 
     pool.join();
-    println!("{:?}", result);
+    //println!("{:?}", result);
+
+    let elapsed_time = now.elapsed();
+    println!("Running took {} ms.", elapsed_time.as_millis());
 }
 
 fn main() {
-    const NUM_THREADS: usize = 4;
+    const NUM_THREADS: usize = 16;
 
-    let matrix1 = Arc::new(vec![vec![1, 2, 3], vec![4, 5, 6], vec![7, 8, 9]]);
-    let matrix2 = Arc::new(vec![vec![1, 5, 9], vec![7, 2, 9], vec![3, 8, 1]]);
+    let mut opt = Vec::new();
+    let mut opt2 = Vec::new();
+    for _ in 0..500 {
+        let mut line1 = Vec::new();
+        let mut line2 = Vec::new();
+        for _ in 0..500 {
+            line1.push(1);
+            line2.push(2);
+        }
+
+        opt.push(line1);
+        opt2.push(line2);
+    }
+
+    let matrix1 = Arc::new(opt);
+    let matrix2 = Arc::new(opt2);
 
     println!("Classic - consecutive rows");
     compute_classic_threads(
