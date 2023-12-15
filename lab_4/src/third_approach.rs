@@ -44,15 +44,21 @@ async fn make_request(stream: &mut TcpStream)
     stream.write(&[1]).await.unwrap();
 }
 
-async fn connect(addr: &str) -> TcpStream {
-    let tcp_stream = TcpStream::connect(addr).await.unwrap();
+async fn connect(addr: &str) -> std::io::Result<TcpStream> {
+    let tcp_stream = TcpStream::connect(addr).await;
     tcp_stream
 }
 
 async fn download_one_file(address: &str) {
     let mut stream = connect(address).await;
-    make_request(&mut stream).await;
-    receive_request(&mut stream).await;
+    if stream.is_ok() {
+        let mut stream_unw = stream.unwrap();
+        make_request(&mut stream_unw).await;
+        receive_request(&mut stream_unw).await;
+    }
+    else {
+        println!("Unknown host");
+    }
 }
 
 pub async  fn download_files(files: &Vec<&str>) {

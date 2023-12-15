@@ -45,8 +45,8 @@ fn make_request<T>(mut stream: T)
     stream.write(&[1]).unwrap();
 }
 
-fn connect(addr: &str) -> TcpStream {
-    return TcpStream::connect(addr).unwrap();
+fn connect(addr: &str) -> std::io::Result<TcpStream> {
+    return TcpStream::connect(addr);
 }
 
 pub fn download_files(files: &Vec<&str>) {
@@ -54,8 +54,14 @@ pub fn download_files(files: &Vec<&str>) {
     for file in files {
         pool.install(move || {
             let stream = connect(file);
-            make_request(&stream);
-            receive_request(&stream);
+            if stream.is_ok() {
+                let stream_unw = stream.unwrap();
+                make_request(&stream_unw);
+                receive_request(&stream_unw);
+            }
+            else {
+                println!("Host unknown");
+            }
         });
     }
 }

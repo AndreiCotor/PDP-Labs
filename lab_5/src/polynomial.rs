@@ -2,12 +2,12 @@ use std::cmp::{max, min};
 use std::fmt::{Display, Formatter};
 use std::{ops, thread};
 use std::sync::Arc;
-use std::sync::atomic::{AtomicI32, Ordering};
+use std::sync::atomic::{AtomicI32, AtomicI64, Ordering};
 use async_recursion::async_recursion;
 
 #[derive(Clone)]
 pub struct Polynomial {
-    coef: Vec<i32>
+    coef: Vec<i64>
 }
 
 impl Display for Polynomial {
@@ -25,10 +25,19 @@ impl Display for Polynomial {
 }
 
 impl Polynomial {
-    pub fn new(coef: Vec<i32>) -> Self {
+    pub fn new(coef: Vec<i64>) -> Self {
         Polynomial {
             coef
         }
+    }
+
+    pub fn with_size(size: usize) -> Self {
+        let mut vec = vec![];
+        for i in 0..size {
+            vec.push(i as i64);
+        }
+
+        Polynomial::new(vec)
     }
 
     fn split(&self, low_half_size: usize) -> (Polynomial, Polynomial) {
@@ -61,13 +70,13 @@ impl Polynomial {
         Polynomial::new(res)
     }
 
-    fn multiply_parallel_batch(&self, other: Arc<Polynomial>, left: usize, right: usize, res: Vec<Arc<AtomicI32>>) {
+    fn multiply_parallel_batch(&self, other: Arc<Polynomial>, left: usize, right: usize, res: Vec<Arc<AtomicI64>>) {
         for i in left..right {
-            let self_left = max(0, (i as i32) - (other.coef.len() as i32) + 1);
-            let self_right = min(self.coef.len() as i32, i as i32 + 1);
+            let self_left = max(0, (i as i64) - (other.coef.len() as i64) + 1);
+            let self_right = min(self.coef.len() as i64, i as i64 + 1);
 
             for j in self_left..self_right {
-                let other_index = i as i32 - j;
+                let other_index = i as i64 - j;
                 let add = self.coef[j as usize] * other.coef[other_index as usize];
                 res[i].fetch_add(add, Ordering::Relaxed);
             }
@@ -79,7 +88,7 @@ impl Polynomial {
         let res_size = res_degree + 1;
         let mut res = vec![];
         for _ in 0..res_size {
-            res.push(Arc::new(AtomicI32::new(0)));
+            res.push(Arc::new(AtomicI64::new(0)));
         }
 
         let poly1 = Arc::new(self.clone());
@@ -108,12 +117,8 @@ impl Polynomial {
     }
 
     pub fn multiply_karatsuba(&self, other: &Polynomial) -> Polynomial {
-        if self.coef.len() == 1 || other.coef.len() == 1 {
+        if self.coef.len() <= 16 || other.coef.len() <= 16 {
             return self.multiply(other);
-        }
-
-        if self.coef.len() == 0 || other.coef.len() == 0 {
-            return Polynomial::new(vec![]);
         }
 
         let res_degree = self.coef.len() - 1 + other.coef.len() - 1;
@@ -146,12 +151,8 @@ impl Polynomial {
 
     #[async_recursion]
     pub async fn multiply_karatsuba_parallel(&self, other: &Polynomial) -> Polynomial {
-        if self.coef.len() == 1 || other.coef.len() == 1 {
+        if self.coef.len() <= 16 || other.coef.len() <= 16 {
             return self.multiply(other);
-        }
-
-        if self.coef.len() == 0 || other.coef.len() == 0 {
-            return Polynomial::new(vec![]);
         }
 
         let res_degree = self.coef.len() - 1 + other.coef.len() - 1;

@@ -25,34 +25,44 @@ fn parse_request(request_str: &str) {
 fn receive_request<T>(stream_channel: Receiver<T>)
     where T: Read
 {
-    let mut stream = stream_channel.recv().unwrap();
-    const BUFF_SIZE: usize = 128;
+    let mut stream = stream_channel.recv();
+    if stream.is_ok() {
+        let mut stream_unw = stream.unwrap();
+        const BUFF_SIZE: usize = 128;
 
-    let mut buff = [0; BUFF_SIZE];
-    let mut request_str = String::new();
-    loop {
-        let bits_read = stream.read(&mut buff).unwrap();
-        request_str += from_utf8(&buff).unwrap();
+        let mut buff = [0; BUFF_SIZE];
+        let mut request_str = String::new();
+        loop {
+            let bits_read = stream_unw.read(&mut buff).unwrap();
+            request_str += from_utf8(&buff).unwrap();
 
-        if bits_read < BUFF_SIZE {
-            break;
+            if bits_read < BUFF_SIZE {
+                break;
+            }
         }
-    }
 
-    parse_request(&request_str);
+        parse_request(&request_str);
+    }
 }
 
 fn make_request<T>(stream_channel: Receiver<T>, sender_channel: Sender<T>)
     where T: Write
 {
-    let mut stream = stream_channel.recv().unwrap();
-    stream.write(&[1]).unwrap();
-    sender_channel.send(stream).unwrap();
+    let mut stream = stream_channel.recv();
+    if stream.is_ok() {
+        let mut stream_unw = stream.unwrap();
+        stream_unw.write(&[1]).unwrap();
+        sender_channel.send(stream_unw).unwrap();
+    }
 }
 
 fn connect(addr: &str, channel: Sender<TcpStream>) {
-    let tcp_stream = TcpStream::connect(addr).unwrap();
-    channel.send(tcp_stream).unwrap();
+    let tcp_stream = TcpStream::connect(addr);
+    if tcp_stream.is_err() {
+        println!("Host unknown");
+        return;
+    }
+    channel.send(tcp_stream.unwrap()).unwrap();
 }
 
 pub fn download_files(files: &Vec<&str>) {
