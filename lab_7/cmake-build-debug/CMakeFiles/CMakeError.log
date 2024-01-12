@@ -1,0 +1,28 @@
+The MPI test test_mpi for C in mode normal failed to compile with the following output:
+Change Dir: D:/Uni/PDP-Labs/lab_7/cmake-build-debug/CMakeFiles/CMakeScratch/TryCompile-mlf3gx
+
+Run Build Command(s):C:/Users/andre/AppData/Local/JetBrains/Toolbox/apps/CLion/ch-0/231.9011.31/bin/ninja/win/x64/ninja.exe cmTC_3c8e6 && [1/2] Building C object CMakeFiles/cmTC_3c8e6.dir/test_mpi.c.obj
+FAILED: CMakeFiles/cmTC_3c8e6.dir/test_mpi.c.obj 
+C:\Users\andre\AppData\Local\JetBrains\Toolbox\apps\CLion\ch-0\231.9011.31\bin\mingw\bin\gcc.exe   -fdiagnostics-color=always -o CMakeFiles/cmTC_3c8e6.dir/test_mpi.c.obj -c D:/Uni/PDP-Labs/lab_7/cmake-build-debug/CMakeFiles/CMakeScratch/TryCompile-mlf3gx/test_mpi.c
+D:/Uni/PDP-Labs/lab_7/cmake-build-debug/CMakeFiles/CMakeScratch/TryCompile-mlf3gx/test_mpi.c:1:10: fatal error: mpi.h: No such file or directory
+    1 | #include <mpi.h>
+      |          ^~~~~~~
+compilation terminated.
+ninja: build stopped: subcommand failed.
+
+
+
+The MPI test test_mpi for CXX in mode normal failed to compile with the following output:
+Change Dir: D:/Uni/PDP-Labs/lab_7/cmake-build-debug/CMakeFiles/CMakeScratch/TryCompile-rxfxvf
+
+Run Build Command(s):C:/Users/andre/AppData/Local/JetBrains/Toolbox/apps/CLion/ch-0/231.9011.31/bin/ninja/win/x64/ninja.exe cmTC_03572 && [1/2] Building CXX object CMakeFiles/cmTC_03572.dir/test_mpi.cpp.obj
+FAILED: CMakeFiles/cmTC_03572.dir/test_mpi.cpp.obj 
+C:\Users\andre\AppData\Local\JetBrains\Toolbox\apps\CLion\ch-0\231.9011.31\bin\mingw\bin\g++.exe   -fdiagnostics-color=always -o CMakeFiles/cmTC_03572.dir/test_mpi.cpp.obj -c D:/Uni/PDP-Labs/lab_7/cmake-build-debug/CMakeFiles/CMakeScratch/TryCompile-rxfxvf/test_mpi.cpp
+D:/Uni/PDP-Labs/lab_7/cmake-build-debug/CMakeFiles/CMakeScratch/TryCompile-rxfxvf/test_mpi.cpp:1:10: fatal error: mpi.h: No such file or directory
+    1 | #include <mpi.h>
+      |          ^~~~~~~
+compilation terminated.
+ninja: build stopped: subcommand failed.
+
+
+
